@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+.vercel/
+.env
+.env.*
+!.env.example
+.aws/
+coverage/
+*.log
+*.zip
+PediRescue.html
