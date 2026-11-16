@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, CircleHelp, FileClock, FlaskConical, HeartPulse, UserRound, Maximize2, Minimize2, MousePointer2, Pause, Play, Plus, RotateCcw, ShieldCheck, SlidersHorizontal, Square, Wifi, WifiOff } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { ClinicalDialogs, Dashboard, Medications, PatientStrip, Resuscitation, SessionActivity } from './components/clinical';
+import { HciNotes } from './components/hci-notes';
 import { DEMO_STEPS, demoPosition, demoSnapshot, stepStart, TOTAL_DEMO_MS } from './lib/demo';
-import { initialState, reducer, scenarioState, type Action, type Scenario, type Screen } from './lib/model';
+import { formatTimer, initialState, reducer, scenarioState, type Action, type Scenario, type Screen } from './lib/model';
 const NAV = [{
   id: 'dashboard' as const,
   label: 'Patient',
@@ -92,11 +93,19 @@ export default function App() {
   }>();
   const tabletRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const helpTriggerRef = useRef<HTMLButtonElement>(null);
+  const helpRef = useRef<HTMLDivElement>(null);
   const previousScreen = useRef(state.screen);
   const position = demoPosition(demo.time);
   const step = DEMO_STEPS[position.index];
-  const principle = scenario ? SCENARIOS.find(item => item.id === scenario)!.principle : demo.active ? step.principle : 'Error prevention';
+  const principle = scenario ? SCENARIOS.find(item => item.id === scenario)!.principle : demo.active ? step.principle : {
+    dashboard: 'Recognition rather than recall',
+    medications: 'Feedback & error prevention',
+    resuscitation: 'Visibility of system status',
+    activity: 'Feedback & user control'
+  }[state.screen];
   const dispatch = useCallback((action: Action) => {
+    setShowHelp(false);
     setDemo(current => current.active ? {
       ...current,
       running: false,
@@ -184,8 +193,26 @@ export default function App() {
     };
   }, [focusTarget, demo.active, demo.manual, state.dialog, state.screen, state.events.length, dialogContainer, fullscreen]);
   useEffect(() => {
+    if (!showHelp) return;
+    const help = helpRef.current;
+    help?.focus({ preventScroll: true });
+    function dismissOutside(event: Event) {
+      if (event.target instanceof Node && !help?.contains(event.target) && !helpTriggerRef.current?.contains(event.target)) setShowHelp(false);
+    }
+    document.addEventListener('pointerdown', dismissOutside);
+    document.addEventListener('focusin', dismissOutside);
+    return () => {
+      document.removeEventListener('pointerdown', dismissOutside);
+      document.removeEventListener('focusin', dismissOutside);
+      if (help?.contains(document.activeElement) || document.activeElement === document.body) helpTriggerRef.current?.focus({ preventScroll: true });
+    };
+  }, [showHelp]);
+  useEffect(() => {
     function keydown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !state.dialog) setFullscreen(false);
+      if (event.key === 'Escape' && !state.dialog) {
+        if (showHelp) setShowHelp(false);
+        else setFullscreen(false);
+      }
     }
     document.addEventListener('keydown', keydown);
     document.body.classList.toggle('fullscreen-open', fullscreen);
@@ -193,7 +220,7 @@ export default function App() {
       document.removeEventListener('keydown', keydown);
       document.body.classList.remove('fullscreen-open');
     };
-  }, [fullscreen, state.dialog]);
+  }, [fullscreen, state.dialog, showHelp]);
   function startDemo() {
     setScenario(null);
     setShowHelp(false);
@@ -231,12 +258,14 @@ export default function App() {
     }));
   }
   function resetScenario() {
+    setShowHelp(false);
     setDemo(DEFAULT_DEMO);
     setScenario(null);
     setState(initialState());
     setFocusTarget(undefined);
   }
   function selectScenario(id: Scenario) {
+    setShowHelp(false);
     setDemo(DEFAULT_DEMO);
     setScenario(id);
     setState(scenarioState(id));
@@ -267,8 +296,9 @@ export default function App() {
             }}><header className="app-header" inert={!!state.dialog}>
             <div className="app-brand-area"><Brand small /><span>Emergency workspace</span></div>
             <div className="app-header-meta">
+              {(state.timer.running || state.timer.elapsed > 0) && <button className="timer-return" aria-label={`${state.timer.running ? 'Running' : 'Paused'} timer ${formatTimer(state.timer.elapsed)}. Open Resuscitation`} onClick={() => dispatch({ type: 'NAVIGATE', screen: 'resuscitation' })}><HeartPulse size={15} /><span>Timer {state.timer.running ? 'running' : 'paused'}</span><strong>{formatTimer(state.timer.elapsed)}</strong></button>}
               <span className={`connection-status ${state.offline ? 'offline' : ''}`} title={state.offline ? 'Simulated offline reference state' : 'Local educational simulation'}>{state.offline ? <WifiOff size={16} /> : <Wifi size={16} />}<span>{state.offline ? 'Offline' : 'Local simulation'}</span></span>
-              <button className="help-button" aria-label="How to use this workspace" aria-expanded={showHelp} onClick={() => setShowHelp(value => !value)}><CircleHelp size={20} /><span>Help</span></button>
+              <button ref={helpTriggerRef} className="help-button" aria-label="How to use this workspace" aria-controls={showHelp ? 'workspace-help' : undefined} aria-expanded={showHelp} onClick={() => setShowHelp(value => !value)}><CircleHelp size={20} /><span>Help</span></button>
               {fullscreen && <button className="help-button" aria-label="Exit fullscreen" onClick={() => setFullscreen(false)}><Minimize2 size={20} /></button>}
             </div>
           </header>
@@ -279,7 +309,7 @@ export default function App() {
           </div>
           <footer className="app-footer"><span><ShieldCheck size={14} />SIMULATION ONLY — NOT FOR CLINICAL USE</span><span>Fictional patient data</span></footer>
           <div className="home-indicator" aria-hidden="true" />
-          {showHelp && <div className="help-popover" role="region" aria-label="About PediRescue"><strong>Using this workspace</strong><p>Start in Patient to enter identity and weight. Choose Medicines for a safety review, or Resuscitation for the independent timer.</p><p>Activity shows your recorded actions. Patient details remain visible above every screen. All data is fictional; no medication can be administered.</p><Button size="small" variant="secondary" onClick={() => setShowHelp(false)}>Understood<Check size={13} /></Button></div>}
+          {showHelp && <div ref={helpRef} id="workspace-help" className="help-popover" role="region" aria-label="Using this workspace" tabIndex={-1}><strong>Using this workspace</strong><p>Start in Patient to enter identity and weight. Choose Medicines for a safety review, or Resuscitation for the independent timer.</p><p>Activity shows your recorded actions. Patient details remain visible above every screen. All data is fictional; no medication can be administered.</p><Button size="small" variant="secondary" onClick={() => setShowHelp(false)}>Understood<Check size={13} /></Button></div>}
         <div className="dialog-layer" ref={setDialogContainer} /><ClinicalDialogs {...screenProps} container={dialogContainer} />
       </div>{focusRect && demo.active && <div className="demo-focus" style={focusRect} aria-hidden="true"><span><MousePointer2 size={12} />DEMO</span></div>}</div><div className="device-caption"><span><span className="caption-dot" />LIVE INTERACTIVE PROTOTYPE</span><span>Touch, click, or use your keyboard<MousePointer2 size={12} /></span></div></div>
       <aside className="presentation-panel"><section className="demo-panel"><div className="panel-heading"><span className="panel-icon"><Play size={16} /></span><div><h3>See the workflow.</h3><p>A guided, hands-free walkthrough.</p></div></div>{!demo.active ? <><div className="demo-preview"><span className="eyebrow">THE COMPLETE PATIENT JOURNEY</span><div className="demo-preview-route"><span>Patient</span><ArrowRight size={11} /><span>Safety checks</span><ArrowRight size={11} /><span>Review</span></div><div className="demo-meta"><span><span className="status-dot" />10 steps</span><span>~50 seconds</span></div></div><Button className="start-demo" onClick={startDemo}><Play size={15} fill="currentColor" />Start guided demo<ArrowRight size={15} /></Button><p className="demo-helper">Or interact with the tablet at your own pace.</p></> : <><div className="demo-step-status"><span className="tag tag-sage">{demo.running ? <span className="playing-bars"><i /><i /><i /></span> : demo.time >= TOTAL_DEMO_MS ? <Check size={12} /> : <Pause size={11} />}{demo.running ? 'Playing' : demo.time >= TOTAL_DEMO_MS ? 'Complete' : 'Paused'}</span><span className="mono">{String(position.index + 1).padStart(2, '0')} / 10</span></div><div className="demo-progress" role="progressbar" aria-label="Guided demo progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(demo.time / TOTAL_DEMO_MS * 100)}><span style={{
@@ -294,7 +324,7 @@ export default function App() {
                   ...current,
                   speed: Number(event.target.value)
                 }))}><option value={1}>1× speed</option><option value={1.5}>1.5× speed</option></select></div><div className="demo-steps">{DEMO_STEPS.map((item, index) => <button key={item.title} className={index === position.index ? 'current' : index < position.index ? 'visited' : ''} aria-label={`Go to step ${index + 1}: ${item.title}`} title={item.title} onClick={() => seek(index)}>{index < position.index ? <Check size={10} /> : index + 1}</button>)}</div></>}
-      <div className="principle-box"><span className="micro-label">HCI PRINCIPLE IN FOCUS</span><span><ShieldCheck size={15} />{principle}</span></div></section>
+      <HciNotes screen={state.screen} principle={principle} /></section>
       <section className="scenario-panel"><div className="scenario-panel-heading"><span><SlidersHorizontal size={15} />Explore the edge cases</span><span className="scenario-count">06</span></div><p>Put the interface through its paces.</p><div className="scenario-list">{SCENARIOS.map((item, index) => <button key={item.id} className={scenario === item.id ? 'selected' : ''} onClick={() => selectScenario(item.id)}><span className="scenario-number">0{index + 1}</span><span><strong>{item.title}</strong><small>{item.subtitle}</small></span><ChevronRight size={14} /></button>)}</div><button className="reset-scenario" onClick={resetScenario}><RotateCcw size={13} />Reset workspace<span>Return to standby</span></button></section>
       <div className="presentation-note"><FlaskConical size={16} /><p>Built to explore usability.<br /><strong>Never for clinical decisions.</strong></p></div></aside></div>
     </main><footer className="presentation-footer"><span>PEDIRESCUE<span className="footer-separator">/</span>HUMAN–COMPUTER INTERACTION</span><span><ShieldCheck size={12} />An educational prototype, thoughtfully considered.</span></footer>

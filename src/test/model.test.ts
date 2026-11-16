@@ -164,11 +164,11 @@ describe('reference safety and activity integrity', () => {
     expect(state.dialog).toBe('patient');
     expect(state.reviewAttempted).toBe(false);
   });
-  it('records unverified status without producing any numeric dosing values', () => {
+  it('explains study mode without producing any numeric dosing values', () => {
     const state = reducer(patientState(), {
       type: 'OPEN_REVIEW'
     });
-    expect(state.events.at(-1)?.detail).toContain('No dose or administration volume');
+    expect(state.events.at(-1)?.detail).toContain('Dosing is outside the prototype scope');
     expect(state).not.toHaveProperty('dose');
     expect(state).not.toHaveProperty('volume');
   });
@@ -256,7 +256,7 @@ describe('deterministic guided demonstration', () => {
     expect(state.patient).toBeNull();
     expect(state.timer.running).toBe(false);
     const titles = state.events.map(event => event.title);
-    for (const title of ['Invalid patient input detected', 'Emergency session started', 'Patient details confirmed', 'Medication reference opened', 'Safety check blocked clinical calculation', 'Simulated medication review recorded', 'Demonstration timer started', 'Demonstration timer reset', 'Patient weight or identity edited', 'Previous medication review invalidated', 'Session completed']) expect(titles).toContain(title);
+    for (const title of ['Invalid patient input detected', 'Emergency session started', 'Patient details confirmed', 'Medication reference opened', 'Educational safety review opened', 'Simulated medication review recorded', 'Demonstration timer started', 'Demonstration timer reset', 'Patient weight or identity edited', 'Previous medication review invalidated', 'Session completed']) expect(titles).toContain(title);
   });
   it('seeking backwards and replaying repeatedly produces identical states', () => {
     const expected = demoSnapshot(TOTAL_DEMO_MS, baseTime);

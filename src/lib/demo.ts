@@ -71,8 +71,8 @@ export const DEMO_STEPS: Step[] = [{
     id: 'epinephrine'
   }, 'medication-detail')]
 }, {
-  title: 'Block unverified calculations',
-  description: 'Unverified references and concentration block all numerical dosing. Acknowledging a warning never authorizes administration.',
+  title: 'Review safely in study mode',
+  description: 'Read the overview, check the patient, and acknowledge the prototype limits. Dosing is outside the demo scope; recording a review never authorizes administration.',
   principle: 'Error prevention',
   duration: 6500,
   cues: [cue(300, {

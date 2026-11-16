@@ -41,6 +41,8 @@ Choose **Start guided demo** for the ten-step walkthrough. The walkthrough is ab
 
 Fullscreen tablet hides the presentation panel. Use the exit icon in the tablet header or Escape to return. All four sections remain usable manually.
 
+Expand the existing **HCI principle in focus** strip to see examples of Norman’s seven design concepts and Nielsen’s ten heuristics. The notes follow the current workspace and stay collapsed by default. The palette, typography, tablet frame, and four-section layout are retained. Workspace Help supports keyboard focus, Escape dismissal, and returning focus to its button.
+
 ## Develop
 
 ```sh
@@ -57,6 +59,7 @@ The production web build is in `dist/`. After building, the standalone command g
 - Clear next actions and progressive disclosure: choose a medicine, open its safety review, complete a checklist with a remaining-check count, and receive visible recorded confirmation.
 - Patient-form cancellation protects unsaved entries. Duplicate recording is blocked, and patient age changes invalidate dependent reviews as well as weight/source changes.
 - Four clinical workspaces: emergency dashboard, medication references, resuscitation, and session activity.
+- Medicines and all four resuscitation categories include sourced study summaries. Source details and scope explanations expand on demand; the timer remains visible when switching tasks.
 - Patient setup and editing with missing, zero, negative, nonnumeric, and incorrect-unit validation. Invalid data stays in the form for correction.
 - Explicit measured/estimated weight sources. The Length-based option uses the original PAWPER XL-MAC 2017 Table 2 lookup with body length and mid-arm circumference (MAC), a live estimated weight, and retained source measurements.
 - Medication name search, category filtering, empty results, route selection, safety review, verification checks, and educational activity recording.
@@ -97,4 +100,6 @@ See **[USABILITY.md](USABILITY.md)** for the design rationale, five concrete obs
 
 Automated checks cover validation/recovery, unit rejection, estimated weight, reference search, review invalidation, guarded activity recording, timer controls, confirmation cancellation, session completion, all six scenarios, deterministic backward seeking, repeated demos, frozen-playhead timing, and server rendering of the actual screen components. PAWPER-specific tests compare all 34 length bands and seven habitus categories against an independently extracted fixture from the original Table 2, including category boundaries, the published worked example, invalid measurements, pediatric age limits, estimate provenance, and review invalidation after measurement edits. Passing these tests checks software behavior, not clinical validity.
 
-The production build and 118 automated tests passed, including the usability-state checks and the PAWPER reference tests. After the user started the development server, the desktop interface at localhost:5173 was checked live: fullscreen navigation, invalid-weight rejection and recovery, patient confirmation, medication safety review, checklist completion, recorded-review feedback, review invalidation after a weight edit, and recovery of an accidentally closed patient draft. The live check also corrected navigation alignment and made dialog headings remain visible when scrolling. Mobile touch behavior, the remaining live scenarios, and observation with representative medical users still need verification. No claim of clinical usability validation or audited accessibility conformance is made.
+The current production build and 132 automated tests passed, including the usability-state checks and the PAWPER reference tests. The latest study content, expandable HCI notes, and Help refinements still need live visual and keyboard checks: the preview was unreachable, and this environment cannot start a listening development server.
+
+An earlier live desktop check at localhost:5173 covered fullscreen navigation, invalid-weight rejection and recovery, patient confirmation, medication safety review, checklist completion, recorded-review feedback, review invalidation after a weight edit, and recovery of an accidentally closed patient draft. Mobile touch behavior, the remaining live scenarios, and observation with representative medical users still need verification. No claim of clinical usability validation or audited accessibility conformance is made.

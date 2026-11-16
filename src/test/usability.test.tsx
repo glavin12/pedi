@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Dashboard, Medications, PatientStrip } from '../components/clinical';
-import { demoPatientActions, initialState, reducer, type Action, type AppState } from '../lib/model';
+import { Dashboard, Medications, PatientStrip, Resuscitation } from '../components/clinical';
+import { HciNotes } from '../components/hci-notes';
+import { demoPatientActions, initialState, MEDICATIONS, REFERENCES, reducer, type Action, type AppState } from '../lib/model';
+import { MEDICINE_OVERVIEWS, RESUSCITATION_OVERVIEWS } from '../lib/education';
 
 const dispatch = () => {};
 const apply = (actions: Action[], state: AppState = initialState(0)) => actions.reduce(reducer, state);
@@ -42,6 +44,36 @@ describe('recoverable patient entry', () => {
 });
 
 describe('a clear medication review journey', () => {
+  it.each(MEDICATIONS)('shows the matching study content and source for $name', medicine => {
+    const state = reducer(initialState(0), { type: 'SELECT_MEDICATION', id: medicine.id });
+    const html = renderToStaticMarkup(<Medications state={state} dispatch={dispatch} />);
+    expect(html).toContain(MEDICINE_OVERVIEWS[medicine.id].summary);
+    expect(html).toContain(MEDICINE_OVERVIEWS[medicine.id].url);
+    expect(html).toContain('Dosing is not included');
+    if (medicine.route !== 'Inhaled') expect(html).not.toContain('<option>Inhaled</option>');
+  });
+  it('rejects an unrelated route and supports returning to the combined example route', () => {
+    const state = reviewed();
+    expect(reducer(state, { type: 'ROUTE', value: 'Inhaled' })).toEqual(state);
+    const changed = reducer(state, { type: 'ROUTE', value: 'IO' });
+    expect(changed.checks).toEqual([]);
+    expect(reducer(changed, { type: 'ROUTE', value: 'IV / IO' }).route).toBe('IV / IO');
+    const inhaled = reducer(state, { type: 'SELECT_MEDICATION', id: 'salbutamol' });
+    expect(reducer(inhaled, { type: 'ROUTE', value: 'IV' })).toEqual(inhaled);
+  });
+  it('requires fresh acknowledgements when starting another review', () => {
+    const recorded = reducer(reviewed(), { type: 'RECORD' });
+    expect(reducer(recorded, { type: 'CHECK', value: 'identity' })).toEqual(recorded);
+    const restarted = reducer(recorded, { type: 'OPEN_REVIEW' });
+    expect(restarted.checks).toEqual([]);
+    expect(reducer(restarted, { type: 'RECORD' })).toEqual(restarted);
+  });
+  it('ignores checks outside an active review and rejects unknown check identifiers', () => {
+    const state = patient();
+    expect(reducer(state, { type: 'CHECK', value: 'identity' })).toEqual(state);
+    const active = reducer(state, { type: 'OPEN_REVIEW' });
+    expect(reducer(active, { type: 'CHECK', value: 'unrelated' })).toEqual(active);
+  });
   it('explains the next action instead of showing an inaccessible checklist', () => {
     const html = renderToStaticMarkup(<Medications state={patient()} dispatch={dispatch} />);
     expect(html).toContain('Next: review patient &amp; safety');
@@ -71,6 +103,33 @@ describe('a clear medication review journey', () => {
   it('removes an abandoned note when another medicine is selected', () => {
     const state = apply([{ type: 'RECORD_NOTE', value: 'A note about the previous selection' }, { type: 'SELECT_MEDICATION', id: 'amiodarone' }], patient());
     expect(state.recordNote).toBe('');
+  });
+});
+
+describe('useful resuscitation content and presentation notes', () => {
+  it.each(REFERENCES)('shows the matching overview when selecting %s without resetting the timer', reference => {
+    const running = apply([{ type: 'TIMER_TOGGLE' }, { type: 'TIMER_TICK', ms: 3000 }], patient());
+    const state = reducer(running, { type: 'REFERENCE', value: reference });
+    const html = renderToStaticMarkup(<Resuscitation state={state} dispatch={dispatch} />);
+    expect(html).toContain(RESUSCITATION_OVERVIEWS[reference].summary);
+    expect(html).toContain(RESUSCITATION_OVERVIEWS[reference].url);
+    expect(state.timer).toEqual(running.timer);
+    expect(state.patient).toEqual(running.patient);
+  });
+  it('keeps saved content and timer controls available in the offline exercise without offering external links', () => {
+    const state = { ...patient(), offline: true };
+    const html = renderToStaticMarkup(<><Medications state={state} dispatch={dispatch} /><Resuscitation state={state} dispatch={dispatch} /></>);
+    expect(html).toContain(MEDICINE_OVERVIEWS.epinephrine.summary);
+    expect(html).toContain('Start timer');
+    expect(html).toContain('Restore connection');
+    expect(html).not.toContain('target="_blank"');
+  });
+  it('connects the current screen to named Norman concepts and all ten Nielsen heuristics', () => {
+    const html = renderToStaticMarkup(<HciNotes screen="resuscitation" principle="Visibility of system status" />);
+    for (const text of ['Don Norman', 'Jakob Nielsen', 'Affordances', 'Signifiers', 'Constraints', '10. Help and documentation', 'Category buttons change the matching overview']) expect(html).toContain(text);
+    expect(html).toContain('class="principle-box hci-notes"');
+    expect(html).not.toContain('<details open');
+    expect(html).not.toContain('<button');
   });
 });
 

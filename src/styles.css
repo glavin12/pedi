@@ -52,7 +52,7 @@ button,a,input,select,textarea {
 button {
   transition: background .15s,color .15s,border-color .15s;
 }
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible {
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible {
   outline: 3px solid #2B6078;
   outline-offset: 3px;
 }
@@ -528,7 +528,7 @@ a {
   letter-spacing: 1px;
   color: #52694f;
 }
-.principle-box>span:last-child {
+.principle-name {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -537,6 +537,20 @@ a {
   line-height: 1.5;
   margin-top: 7px;
 }
+.hci-notes>summary { display: flex; align-items: center; gap: 7px; min-height: 44px; cursor: pointer; color: #3e624a; list-style: none; }
+.hci-notes>summary::-webkit-details-marker { display: none; }
+.hci-notes>summary>span { flex: 1; }
+.hci-notes>summary:focus-visible { outline-offset: 5px; }
+.hci-notes[open]>summary>svg:last-child { transform: rotate(90deg); }
+.hci-notes-body { max-height: 470px; overflow-y: auto; overscroll-behavior: contain; margin-top: 12px; padding-right: 5px; border-top: 1px solid var(--border); scrollbar-width: thin; }
+.hci-notes-body h3 { font-size: 13px; font-weight: 600; margin: 20px 0 10px; color: var(--slate); }
+.hci-notes-body dl>div { margin-top: 12px; }
+.hci-notes-body dt { font-size: 11px; font-weight: 600; line-height: 1.6; }
+.hci-notes-body dd,.hci-notes-body p { margin: 4px 0 0; font-size: 11px; color: var(--muted); line-height: 1.75; }
+.hci-notes-body .hci-current { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.hci-current strong { display: block; color: var(--primary); margin-bottom: 4px; }
+.hci-sources { display: grid; gap: 3px; margin-top: 10px; }
+.hci-sources a { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; font-size: 11px; color: var(--primary); text-decoration: underline; }
 .scenario-panel {
   padding: 18px 0 0;
   border-top: 1px solid #ccd8ce;
@@ -1070,7 +1084,7 @@ a {
   .principle-box .micro-label {
     font-size: 7px;
   }
-  .principle-box>span:last-child {
+  .principle-name {
     font-size: 10px;
   }
   .scenario-panel-heading>span:first-child {

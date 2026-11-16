@@ -1,9 +1,10 @@
 import { useEffect, useState, type Dispatch, type ReactNode } from 'react';
-import { Activity, ArrowDownToLine, ArrowRight, ArrowUpRight, BookOpen, Check, CheckCheck, ChevronRight, CircleCheck, Clock3, FileClock, HeartPulse, Info, LockKeyhole, Pause, Play, Plus, RotateCcw, Search, ShieldCheck, TriangleAlert, UserRound, X } from 'lucide-react';
+import { Activity, ArrowDownToLine, ArrowRight, ArrowUpRight, BookOpen, Check, CheckCheck, ChevronRight, CircleCheck, Clock3, FileClock, HeartPulse, Info, Pause, Play, Plus, RotateCcw, Search, ShieldCheck, TriangleAlert, UserRound, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Dialog } from './ui/dialog';
 import { filteredMedications, formatTimer, MEDICATIONS, REFERENCES, type Action, type AppState } from '../lib/model';
 import { evaluatePawper, PAWPER_REFERENCE } from '../lib/pawper';
+import { MEDICINE_OVERVIEWS, RESUSCITATION_OVERVIEWS } from '../lib/education';
 
 type Props = { state: AppState; dispatch: Dispatch<Action> };
 
@@ -106,19 +107,20 @@ export function Dashboard({ state, dispatch }: Props) {
 const CHECKS = [
   { id: 'identity', label: 'Patient identity matches this review' },
   { id: 'weight', label: 'Weight in kg and its source checked' },
-  { id: 'simulation', label: 'I understand this is an unverified simulation' },
+  { id: 'simulation', label: 'I understand dosing is not included in this prototype' },
 ];
 
 export function Medications({ state, dispatch }: Props) {
   const medication = MEDICATIONS.find(item => item.id === state.selectedMedication)!;
+  const overview = MEDICINE_OVERVIEWS[medication.id];
   const results = filteredMedications(state.search, state.category);
   const canCheck = !!state.patient && state.reviewAttempted && !state.staleReview && !state.reviewRecorded;
   const remaining = CHECKS.length - state.checks.length;
   return (
     <>
       <PageTitle eyebrow="MEDICINE WORKSPACE" title="Find & review a medicine" description="Choose a medicine, check the patient, then record the simulation review." />
-      {state.offline && <Alert tone="danger" title="Offline reference unavailable" action={<Button size="small" variant="secondary" onClick={() => dispatch({ type: 'OFFLINE', value: false })}>Restore connection</Button>}>No verified offline reference is available. Restore the simulated connection to continue browsing.</Alert>}
-      {state.staleReview && <Alert tone="danger" title="Weight changed — previous review invalidated" id="stale-warning" action={<Button size="small" variant="secondary" onClick={() => dispatch({ type: 'OPEN_REVIEW' })}>Repeat review</Button>}>Review the current {state.patient?.weight} kg weight. Your earlier checks have been cleared.</Alert>}
+      {state.offline && <Alert title="Connection exercise: offline" action={<Button size="small" variant="secondary" onClick={() => dispatch({ type: 'OFFLINE', value: false })}>Restore connection</Button>}>Saved study summaries and the simulation checklist still work. External source pages need a connection. Restoring it does not enable dosing.</Alert>}
+      {state.staleReview && <Alert tone="danger" title="Patient changed — previous review invalidated" id="stale-warning" action={<Button size="small" variant="secondary" onClick={() => dispatch({ type: 'OPEN_REVIEW' })}>Repeat review</Button>}>Review the current patient details and {state.patient?.weight} kg weight. Your earlier checks have been cleared.</Alert>}
       <WeightNotice state={state} dispatch={dispatch} />
       <div className="medication-workspace">
         <aside className="medication-browser" aria-label="Choose a medicine">
@@ -129,12 +131,19 @@ export function Medications({ state, dispatch }: Props) {
           <div className="medication-list">{results.length ? results.map(item => <button className={`medication-item ${item.id === state.selectedMedication ? 'selected' : ''}`} key={item.id} aria-pressed={item.id === state.selectedMedication} onClick={() => dispatch({ type: 'SELECT_MEDICATION', id: item.id })}><span><strong>{item.name}</strong><small>{item.category}</small></span>{item.id === state.selectedMedication ? <Check size={18} /> : <ChevronRight size={18} />}</button>) : <div className="empty-search"><Search size={28} /><strong>No medications found</strong><p>Check the spelling or choose another category.</p><Button variant="secondary" size="small" onClick={() => { dispatch({ type: 'SEARCH', value: '' }); dispatch({ type: 'CATEGORY', value: 'All' }); }}>Clear search & filters</Button></div>}</div>
         </aside>
         <section className="medication-detail" data-focus="medication-detail" aria-label="Medicine review">
-          <div className="reference-heading"><div><span className="eyebrow">2 · PATIENT & SAFETY REVIEW</span><h2>{medication.name}</h2></div><span className="tag tag-warning"><LockKeyhole size={13} />Unverified</span></div>
+          <div className="reference-heading"><div><span className="eyebrow">2 · PATIENT & SAFETY REVIEW</span><h2>{medication.name}</h2></div><span className="tag tag-neutral"><BookOpen size={13} />Study summary</span></div>
+          <section className="study-overview" aria-label={`${medication.name} educational overview`}>
+            <h3>{overview.family}</h3><p>{overview.summary}</p>
+            <details><summary>Review considerations & source<ChevronRight size={15} /></summary><p>{overview.focus}</p>{state.offline ? <p>External source requires a connection.</p> : <a href={overview.url} target="_blank" rel="noreferrer">{overview.source}<ArrowUpRight size={13} /><span className="sr-only"> (opens in a new tab)</span></a>}</details>
+          </section>
           <div className="reference-context"><UserRound size={17} /><span>{state.patient ? <><strong>{state.patient.id}</strong> · {state.patient.weight} kg · {state.patient.method === 'measured' ? 'Measured' : 'Estimated'}</> : 'No patient attached to this review'}</span></div>
-          <label className="route-label">Route to review<select value={state.route} onChange={event => dispatch({ type: 'ROUTE', value: event.target.value })}>{Array.from(new Set([medication.route, 'IV', 'IO', 'Inhaled'])).map(route => <option key={route}>{route}</option>)}</select></label>
-          {!medication.available && <Alert tone="danger" title="Medication reference unavailable">Choose another medicine from the list. No verified content is available for this selection.</Alert>}
-          <div className="blocked-reference"><LockKeyhole size={21} /><div><strong>Clinical calculation unavailable</strong><p>Reference and concentration are unverified. No dose or administration volume is calculated.</p></div></div>
-          <details className="calculation-details"><summary>View calculation status<ChevronRight size={16} /></summary><table className="clinical-table"><caption>SIMULATED CALCULATION REVIEW</caption><tbody><tr><th>Dose per kg</th><td>Validated reference required</td></tr><tr><th>Total dose</th><td>Simulation placeholder</td></tr><tr><th>Concentration</th><td>Verified reference required</td></tr><tr><th>Administration volume</th><td><span className="not-calculated">Not calculated</span></td></tr></tbody></table></details>
+          <label className="route-label">Example route to review<select value={state.route} onChange={event => dispatch({ type: 'ROUTE', value: event.target.value })}>{Array.from(new Set([medication.route, ...medication.route.split(' / ')])).map(route => <option key={route}>{route}</option>)}</select></label>
+          {!medication.available && <Alert title="Medication reference unavailable — example scenario">The study summary is still available. The dosing reference is missing in this scenario. Choose another medicine to explore recovery, or continue the educational checklist.</Alert>}
+          <div className="prototype-scope"><Info size={19} /><div><strong>Dosing is not included</strong><p>You can check patient details and record a practice review. This prototype does not provide doses, concentrations, or administration volumes.</p></div></div>
+          <details className="calculation-details"><summary>Why are dose values not shown?<ChevronRight size={16} /></summary><p>No approved pediatric dosing protocol or product concentration is connected. Adding a patient or completing the checklist does not enable a clinical calculation.</p></details>
+          <ol className="review-progress" aria-label="Medicine review progress">
+            <li className="done"><Check size={14} />Selected</li><li className={state.reviewRecorded ? 'done' : 'current'} aria-current={!state.reviewRecorded ? 'step' : undefined}>{state.reviewRecorded ? <Check size={14} /> : '2'} Safety checks</li><li className={state.reviewRecorded ? 'done' : ''}>{state.reviewRecorded ? <Check size={14} /> : '3'} Recorded</li>
+          </ol>
           {!state.patient ? <div className="next-action-panel"><div><strong>Add a patient to review</strong><p>Patient identity and weight are required before the checks can begin.</p></div><Button onClick={() => dispatch({ type: 'OPEN_PATIENT' })}><Plus size={16} />Add patient</Button></div> : state.reviewRecorded ? <div className="review-success" role="status"><CircleCheck size={24} /><div><strong>Simulation review recorded</strong><p>Your entry is in session activity. No medication was administered.</p></div><Button variant="secondary" onClick={() => dispatch({ type: 'NAVIGATE', screen: 'activity' })}>View activity<ArrowRight size={16} /></Button><button className="text-button" onClick={() => dispatch({ type: 'OPEN_REVIEW' })}>Start another review</button></div> : <>
             {canCheck && <fieldset className="verification-checklist"><legend>Safety checklist <span>{state.checks.length} / {CHECKS.length}</span></legend>{CHECKS.map(item => <label key={item.id} className={state.checks.includes(item.id) ? 'checked' : ''}><input type="checkbox" checked={state.checks.includes(item.id)} disabled={!canCheck} onChange={() => dispatch({ type: 'CHECK', value: item.id })} /><span>{item.label}</span>{state.checks.includes(item.id) && <Check size={16} />}</label>)}</fieldset>}
             <div className="next-action-panel" aria-live="polite">
@@ -148,13 +157,23 @@ export function Medications({ state, dispatch }: Props) {
 }
 
 export function Resuscitation({ state, dispatch }: Props) {
+  const overview = RESUSCITATION_OVERVIEWS[state.reference];
   return (
     <>
-      <PageTitle eyebrow="RESUSCITATION WORKSPACE" title="References & timer" description="Select a reference category. The demonstration timer works independently." />
+      <PageTitle eyebrow="RESUSCITATION WORKSPACE" title="Learn, review & keep time" description="Choose a topic for a study overview. Use the independent timer to practise the workflow." />
+      {state.offline && <Alert title="Connection exercise: offline" action={<Button size="small" variant="secondary" onClick={() => dispatch({ type: 'OFFLINE', value: false })}>Restore connection</Button>}>Saved overviews and the timer remain available. External source pages need a connection.</Alert>}
       <div className="resuscitation-layout">
         <nav className="reference-categories" aria-label="Resuscitation categories">{REFERENCES.map(reference => <button key={reference} className={state.reference === reference ? 'selected' : ''} aria-pressed={state.reference === reference} onClick={() => dispatch({ type: 'REFERENCE', value: reference })}>{reference}{state.reference === reference && <Check size={16} />}</button>)}</nav>
         <div className="resuscitation-content">
-          <section className="reference-document"><span className="eyebrow">SELECTED CATEGORY</span><h2>{state.reference}</h2><div className="unavailable-reference"><span><BookOpen size={31} strokeWidth={1.5} /></span><h3>{state.offline ? 'Offline reference unavailable' : 'Clinical reference unavailable'}</h3><p>This prototype has no validated treatment pathway. No clinical steps are displayed.</p></div><button className="expand-reference" aria-expanded={state.expandedReference} onClick={() => dispatch({ type: 'EXPAND_REFERENCE' })}><Info size={17} />Why is this unavailable?<ChevronRight size={16} /></button>{state.expandedReference && <p className="reference-expanded">An approved institutional source and its revision have not been connected. The category selection demonstrates navigation only.</p>}</section>
+          <section className="reference-document" aria-label={`${state.reference} educational overview`}>
+            <span className="eyebrow">EDUCATIONAL OVERVIEW</span><h2>{state.reference}</h2>
+            <p className="topic-summary">{overview.summary}</p>
+            <ul className="topic-concepts">{overview.concepts.map(concept => <li key={concept}>{concept}</li>)}</ul>
+            <div className="practice-task"><span className="micro-label">TRY THE WORKFLOW</span><p>{overview.task}</p></div>
+            <div className="reference-shortcuts"><Button size="small" variant="secondary" onClick={() => dispatch({ type: 'OPEN_PATIENT' })}><UserRound size={15} />{state.patient ? 'Check patient' : 'Add patient'}</Button><Button size="small" variant="secondary" onClick={() => dispatch({ type: 'NAVIGATE', screen: 'activity' })}><FileClock size={15} />View activity</Button><Button size="small" variant="secondary" onClick={() => dispatch({ type: 'NAVIGATE', screen: 'medications' })}><BookOpen size={15} />Browse medicines</Button></div>
+            {state.offline ? <p className="source-offline">External source requires a connection.</p> : <a className="study-source" href={overview.url} target="_blank" rel="noreferrer">{overview.source}<ArrowUpRight size={13} /><span className="sr-only"> (opens in a new tab)</span></a>}
+            <button className="expand-reference" aria-expanded={state.expandedReference} aria-controls="reference-scope" onClick={() => dispatch({ type: 'EXPAND_REFERENCE' })}><Info size={17} />About this study overview<ChevronRight size={16} /></button>{state.expandedReference && <p className="reference-expanded" id="reference-scope">These general concepts are for study. A hospital-approved pediatric treatment pathway has not been connected. No diagnosis, treatment sequence, or clinical interval is supplied. Opening a source does not validate this prototype.</p>}
+          </section>
           <section className="timer-card" data-focus="timer" aria-label="Demonstration timer"><div className="timer-heading"><h2><Clock3 size={19} />Demonstration timer</h2><span className={`tag ${state.timer.running ? 'tag-sage' : 'tag-neutral'}`}>{state.timer.running ? 'Running' : state.timer.elapsed ? 'Paused' : 'Ready'}</span></div><div className={`timer-display ${state.timer.running ? 'is-running' : ''}`} aria-label={`Elapsed time ${formatTimer(state.timer.elapsed)}`}>{formatTimer(state.timer.elapsed)}<span>ELAPSED TIME</span></div><div className="timer-controls"><Button onClick={() => dispatch({ type: 'TIMER_TOGGLE' })}>{state.timer.running ? <Pause size={19} /> : <Play size={19} />}{state.timer.running ? 'Pause timer' : state.timer.elapsed ? 'Resume timer' : 'Start timer'}</Button><Button variant="secondary" disabled={!state.timer.elapsed && !state.timer.running} onClick={() => dispatch({ type: 'TIMER_RESET_REQUEST' })}><RotateCcw size={18} />Reset</Button></div><p>No clinical interval is prescribed. Reset asks for confirmation.</p></section>
         </div>
       </div>
@@ -245,9 +264,9 @@ export function ClinicalDialogs({ state, dispatch, container }: Props & { contai
     </Dialog>
     <Dialog open={state.dialog === 'review'} title="Check the patient & reference" description={`${medication.name} · ${state.route} · educational review only`} container={container} onClose={close} name="review-dialog">
       <div className="review-patient-card"><UserRound size={25} /><div><span className="micro-label">PATIENT</span><strong>{state.patient?.id}</strong><span>{state.patient?.age} {state.patient?.ageUnit}</span></div><div><span className="micro-label">WEIGHT</span><strong>{state.patient?.weight} kg</strong><span>{state.patient?.method === 'measured' ? 'Measured' : 'Estimated'}</span></div></div>
-      <Alert tone="danger" title="Clinical calculation is blocked">The dose reference and concentration are unverified. No dose or administration volume can be calculated.</Alert>
-      <div className="review-status-list"><div><TriangleAlert size={18} /><span>Dose reference</span><strong>Not validated</strong></div><div><TriangleAlert size={18} /><span>Concentration</span><strong>Not verified</strong></div><div><LockKeyhole size={18} /><span>Administration volume</span><strong>Not calculated</strong></div></div>
-      <p className="dialog-footnote">Continue to acknowledge the simulation limits. This does not verify the reference or authorize administration.</p><div className="dialog-actions"><Button onClick={close}>Continue to checklist<ArrowRight size={17} /></Button></div>
+      <Alert tone="info" title="Practice review — dosing is not included">Check the patient and acknowledge the prototype’s limits. No approved dosing protocol or product concentration is connected.</Alert>
+      <div className="review-status-list"><div><UserRound size={18} /><span>Patient context</span><strong>Shown above</strong></div><div><BookOpen size={18} /><span>Review mode</span><strong>Educational</strong></div><div><Info size={18} /><span>Doses & volumes</span><strong>Outside demo scope</strong></div></div>
+      <p className="dialog-footnote">Continue to acknowledge the simulation limits. This does not verify a clinical reference or authorize administration.</p><div className="dialog-actions"><Button onClick={close}>Continue to checklist<ArrowRight size={17} /></Button></div>
     </Dialog>
     <Dialog open={state.dialog === 'record'} title="Record this simulation review?" description="This adds an educational review to session activity. It does not record medication administration." container={container} onClose={close}>
       <div className="record-context"><strong>{medication.name}</strong><span>{state.patient?.id} · {state.patient?.weight} kg</span></div><label className="form-field">Optional note<textarea rows={3} maxLength={400} placeholder="Add an observation about this review" value={state.recordNote} onChange={event => dispatch({ type: 'RECORD_NOTE', value: event.target.value })} /></label><div className="dialog-actions"><Button variant="secondary" onClick={close}>Back to review</Button><Button onClick={() => dispatch({ type: 'RECORD' })}><Check size={18} />Record review</Button></div>

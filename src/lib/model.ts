@@ -343,9 +343,11 @@ export function reducer(state: AppState, action: Action): AppState {
           reviewRecorded: false,
           recordNote: '',
           staleReview: false
-        }, action, 'info', 'Medication reference opened', `${medication.name}. Educational placeholder; no verified dosing content.`);
+        }, action, 'info', 'Medication reference opened', `${medication.name}. Study summary opened; dosing is not included.`);
       }
-    case 'ROUTE':
+    case 'ROUTE': {
+      const route = MEDICATIONS.find(item => item.id === state.selectedMedication)!.route;
+      if (![route, ...route.split(' / ')].includes(action.value)) return state;
       return {
         ...state,
         route: action.value,
@@ -355,6 +357,7 @@ export function reducer(state: AppState, action: Action): AppState {
         reviewRecorded: false,
         recordNote: ''
       };
+    }
     case 'OPEN_REVIEW':
       {
         if (!state.patient) return reducer(state, {
@@ -363,19 +366,21 @@ export function reducer(state: AppState, action: Action): AppState {
         return log({
           ...state,
           dialog: 'review',
+          checks: [],
           reviewAttempted: true,
           reviewRecorded: false,
           reviewedRevision: state.patient.revision,
           staleReview: false
-        }, action, 'warning', 'Safety check blocked clinical calculation', 'Reference and concentration are unverified. No dose or administration volume was calculated.');
+        }, action, 'info', 'Educational safety review opened', 'Patient details shown for a practice review. Dosing is outside the prototype scope.');
       }
     case 'CHECK':
+      if (!['identity', 'weight', 'simulation'].includes(action.value) || !state.patient || !state.reviewAttempted || state.reviewRecorded || state.staleReview || state.reviewedRevision !== state.patient.revision) return state;
       return {
         ...state,
         checks: state.checks.includes(action.value) ? state.checks.filter(item => item !== action.value) : [...state.checks, action.value]
       };
     case 'OPEN_RECORD':
-      return state.patient && !state.staleReview && !state.reviewRecorded && state.reviewAttempted && state.checks.length === 3 ? {
+      return state.patient && state.reviewedRevision === state.patient.revision && !state.staleReview && !state.reviewRecorded && state.reviewAttempted && state.checks.length === 3 ? {
         ...state,
         dialog: 'record'
       } : state;
@@ -392,7 +397,7 @@ export function reducer(state: AppState, action: Action): AppState {
           dialog: null,
           recordNote: '',
           reviewRecorded: true
-        }, action, 'info', 'Simulated medication review recorded', `${MEDICATIONS.find(m => m.id === state.selectedMedication)?.name}. Unverified references acknowledged. No medication administered.${state.recordNote.trim() ? ` Note: ${state.recordNote.trim()}` : ''}`);
+        }, action, 'info', 'Simulated medication review recorded', `${MEDICATIONS.find(m => m.id === state.selectedMedication)?.name}. Prototype limits acknowledged. No medication administered.${state.recordNote.trim() ? ` Note: ${state.recordNote.trim()}` : ''}`);
       }
     case 'REFERENCE':
       return {
@@ -439,7 +444,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return log({
         ...state,
         offline: action.value
-      }, action, action.value ? 'warning' : 'info', action.value ? 'Offline reference unavailable' : 'Reference connection restored', action.value ? 'No verified offline reference is available. Calculation remains blocked.' : 'Simulation placeholders remain unverified.');
+      }, action, action.value ? 'warning' : 'info', action.value ? 'Connection exercise: offline' : 'Simulated connection restored', action.value ? 'Saved summaries and timer remain available. External sources require a connection.' : 'Source links are available again. Dosing remains outside the prototype scope.');
     case 'END_REQUEST':
       return state.patient ? {
         ...state,
