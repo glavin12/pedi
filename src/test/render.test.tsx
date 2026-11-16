@@ -21,7 +21,7 @@ describe('rendering the real application components', () => {
     const state = scenarioState(scenario, 0);
     const html = renderToStaticMarkup(<><Dashboard state={state} dispatch={dispatch} /><Medications state={state} dispatch={dispatch} /></>);
     expect(html).not.toContain('NaN');
-    expect(html).toContain('Dosing is not included');
+    expect(html).toContain('simulation');
     if (scenario === 'offline') expect(html).toContain('Restore connection');
     if (scenario === 'weight') expect(html).toContain('previous review invalidated');
     if (scenario === 'missing') expect(html).toContain('Medication reference unavailable');

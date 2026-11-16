@@ -56,43 +56,43 @@ export const DEMO_STEPS: Step[] = [{
     type: 'SUBMIT_PATIENT'
   }, 'patient-strip')]
 }, {
-  title: 'Find a medication reference',
-  description: 'Search by generic name and inspect the patient context beside the reference.',
+  title: 'Explore all five dose examples',
+  description: 'Browse each medicine, then find Epinephrine. The 18 kg example shows 0.18 mg with its formula, route, and limits.',
   principle: 'Recognition rather than recall',
-  duration: 4500,
+  duration: 10000,
   cues: [cue(100, {
     type: 'NAVIGATE',
     screen: 'medications'
-  }), ...'Epinephrine'.split('').map((_, index) => cue(500 + index * 120, {
+  }), ...['amiodarone', 'adenosine', 'atropine', 'salbutamol'].map((id, index) => cue(800 + index * 1400, { type: 'SELECT_MEDICATION', id }, 'dose-details')), ...'Epinephrine'.split('').map((_, index) => cue(6500 + index * 120, {
     type: 'SEARCH',
     value: 'Epinephrine'.slice(0, index + 1)
-  }, 'medication-search')), cue(2400, {
+  }, 'medication-search')), cue(8200, {
     type: 'SELECT_MEDICATION',
     id: 'epinephrine'
-  }, 'medication-detail')]
+  }, 'dose-details')]
 }, {
   title: 'Review safely in study mode',
-  description: 'Read the overview, check the patient, and acknowledge the prototype limits. Dosing is outside the demo scope; recording a review never authorizes administration.',
+  description: 'The review and record dialogs show the same 0.18 mg example. Acknowledge three checks, then inspect the saved dose in Activity.',
   principle: 'Error prevention',
-  duration: 6500,
+  duration: 11000,
   cues: [cue(300, {
     type: 'OPEN_REVIEW'
-  }, 'review-dialog'), cue(2400, {
+  }, 'review-dialog'), cue(3500, {
     type: 'CLOSE_DIALOG'
-  }), cue(2700, {
+  }), cue(4000, {
     type: 'CHECK',
     value: 'identity'
-  }), cue(3000, {
+  }), cue(4300, {
     type: 'CHECK',
     value: 'weight'
-  }), cue(3300, {
+  }), cue(4600, {
     type: 'CHECK',
     value: 'simulation'
-  }), cue(3700, {
+  }), cue(5100, {
     type: 'OPEN_RECORD'
-  }), cue(4700, {
+  }), cue(7000, {
     type: 'RECORD'
-  })]
+  }), cue(8300, { type: 'NAVIGATE', screen: 'activity' }, 'activity-timeline')]
 }, {
   title: 'Use the demonstration timer',
   description: 'Start, pause, and reset the real timer. Reset requires an explicit confirmation.',
@@ -115,7 +115,7 @@ export const DEMO_STEPS: Step[] = [{
   })]
 }, {
   title: 'Invalidate an outdated review',
-  description: 'Changing the weight to 20 kg invalidates the earlier weight-dependent review and clears its checks.',
+  description: 'Change 18 kg to 20 kg: the example updates from 0.18 mg to 0.2 mg and the old checks clear. The saved 18 kg review remains unchanged in Activity.',
   principle: 'Visibility of system status',
   duration: 5000,
   cues: [cue(100, {

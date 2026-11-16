@@ -1,4 +1,5 @@
 import { evaluatePawper, type PawperEstimate } from './pawper';
+import { calculateDose, doseSummary, type DoseSnapshot } from './doses';
 
 export type Screen = 'dashboard' | 'medications' | 'resuscitation' | 'activity';
 export type Dialog = 'patient' | 'discard-patient' | 'review' | 'record' | 'timer-reset' | 'end' | null;
@@ -28,43 +29,38 @@ export interface Activity {
   kind: 'info' | 'warning' | 'success';
   title: string;
   detail: string;
+  dose?: DoseSnapshot;
 }
 export interface Medication {
   id: string;
   name: string;
   category: string;
-  available: boolean;
   route: string;
 }
 export const MEDICATIONS: Medication[] = [{
   id: 'epinephrine',
   name: 'Epinephrine',
   category: 'Resuscitation',
-  available: true,
   route: 'IV / IO'
 }, {
   id: 'amiodarone',
   name: 'Amiodarone',
   category: 'Resuscitation',
-  available: true,
   route: 'IV / IO'
 }, {
   id: 'adenosine',
   name: 'Adenosine',
   category: 'Cardiovascular',
-  available: true,
   route: 'IV'
 }, {
   id: 'atropine',
   name: 'Atropine',
   category: 'Cardiovascular',
-  available: true,
   route: 'IV / IO'
 }, {
   id: 'salbutamol',
   name: 'Salbutamol',
   category: 'Respiratory',
-  available: false,
   route: 'Inhaled'
 }];
 export const REFERENCES = ['Cardiac arrest', 'Bradycardia', 'Tachycardia', 'Respiratory emergencies'];
@@ -83,6 +79,8 @@ export interface AppState {
   category: string;
   selectedMedication: string;
   route: string;
+  missingReference: string | null;
+  reviewDose: DoseSnapshot | null;
   checks: string[];
   reviewedRevision: number | null;
   reviewAttempted: boolean;
@@ -122,6 +120,8 @@ export function initialState(baseTime = Date.now()): AppState {
     category: 'All',
     selectedMedication: 'epinephrine',
     route: 'IV / IO',
+    missingReference: null,
+    reviewDose: null,
     checks: [],
     reviewedRevision: null,
     reviewAttempted: false,
@@ -205,6 +205,7 @@ export function validatePatient(form: PatientForm): Record<string, string> {
   const errors: Record<string, string> = {};
   if (!form.id.trim()) errors.id = 'Enter a fictional patient identifier.';
   if (!form.age.trim() || !Number.isFinite(Number(form.age)) || Number(form.age) < 0) errors.age = 'Enter a valid, non-negative age.';
+  if (!['years', 'months', 'days'].includes(form.ageUnit)) errors.age = 'Choose years, months, or days for the age.';
   if (form.method === 'length') {
     Object.assign(errors, evaluatePawper(form.length, form.mac).errors);
     const age = Number(form.age);
@@ -217,7 +218,7 @@ export function validatePatient(form: PatientForm): Record<string, string> {
   }
   return errors;
 }
-function log(state: AppState, action: Action, kind: Activity['kind'], title: string, detail = ''): AppState {
+function log(state: AppState, action: Action, kind: Activity['kind'], title: string, detail = '', dose?: DoseSnapshot): AppState {
   return {
     ...state,
     events: [...state.events, {
@@ -225,7 +226,8 @@ function log(state: AppState, action: Action, kind: Activity['kind'], title: str
       at: action.now ?? state.baseTime,
       kind,
       title,
-      detail
+      detail,
+      ...(dose ? { dose } : {})
     }]
   };
 }
@@ -294,12 +296,18 @@ export function reducer(state: AppState, action: Action): AppState {
           errors: {},
           completed: false,
           checks: changed ? [] : state.checks,
+          reviewDose: changed ? null : state.reviewDose,
+          recordNote: changed ? '' : state.recordNote,
           reviewRecorded: changed ? false : state.reviewRecorded,
           staleReview: changed && state.reviewedRevision !== null ? true : state.staleReview,
           events: state.completed ? [] : state.events
         };
         if (!existing) next = log(log(next, action, 'success', 'Emergency session started', `Fictional patient ${patient.id}.`), action, 'info', 'Patient details confirmed', `${patient.age} ${patient.ageUnit} · ${patient.weight} kg · ${patient.method} weight.`);else next = log(next, action, changed ? 'warning' : 'info', changed ? 'Patient weight or identity edited' : 'Patient details updated', `${patient.weight} kg · ${patient.method} weight.`);
         if (changed && state.reviewedRevision !== null) next = log(next, action, 'warning', 'Previous medication review invalidated', 'Patient details changed. Repeat all patient-dependent checks.');
+        if (changed) {
+          const result = calculateDose(patient, state.selectedMedication, state.route, state.missingReference === state.selectedMedication);
+          next = log(next, action, 'info', 'Dose example recalculated', result.dose ? doseSummary(result.dose) : result.reason, result.dose);
+        }
         if (estimation) next = log(next, action, 'info', 'PAWPER XL-MAC weight estimated', `${estimation.lengthCm} cm length · ${estimation.macCm} cm MAC · HS${estimation.habitusScore} · ${weight} kg estimated total body weight · ${estimation.reference}.`);
         if (patient.method !== 'measured') next = log(next, action, 'warning', 'Estimated weight warning', 'Confirm a measured weight before any real clinical decision.');
         return next;
@@ -333,36 +341,42 @@ export function reducer(state: AppState, action: Action): AppState {
       {
         const medication = MEDICATIONS.find(item => item.id === action.id);
         if (!medication) return state;
+        const result = calculateDose(state.patient, medication.id, medication.route, state.missingReference === medication.id);
         return log({
           ...state,
           selectedMedication: action.id,
           route: medication.route,
           checks: [],
           reviewedRevision: null,
+          reviewDose: null,
           reviewAttempted: false,
           reviewRecorded: false,
           recordNote: '',
           staleReview: false
-        }, action, 'info', 'Medication reference opened', `${medication.name}. Study summary opened; dosing is not included.`);
+        }, action, 'info', 'Medication reference opened', result.dose ? doseSummary(result.dose) : `${medication.name}. ${result.reason}`, result.dose);
       }
     case 'ROUTE': {
       const route = MEDICATIONS.find(item => item.id === state.selectedMedication)!.route;
       if (![route, ...route.split(' / ')].includes(action.value)) return state;
-      return {
+      if (action.value === state.route) return state;
+      const result = calculateDose(state.patient, state.selectedMedication, action.value, state.missingReference === state.selectedMedication);
+      return log({
         ...state,
         route: action.value,
         checks: [],
         reviewedRevision: null,
+        reviewDose: null,
         reviewAttempted: false,
         reviewRecorded: false,
         recordNote: ''
-      };
+      }, action, 'info', 'Medication route changed', result.dose ? doseSummary(result.dose) : result.reason, result.dose);
     }
     case 'OPEN_REVIEW':
       {
         if (!state.patient) return reducer(state, {
           type: 'OPEN_PATIENT'
         });
+        const result = calculateDose(state.patient, state.selectedMedication, state.route, state.missingReference === state.selectedMedication);
         return log({
           ...state,
           dialog: 'review',
@@ -370,17 +384,18 @@ export function reducer(state: AppState, action: Action): AppState {
           reviewAttempted: true,
           reviewRecorded: false,
           reviewedRevision: state.patient.revision,
+          reviewDose: result.dose ?? null,
           staleReview: false
-        }, action, 'info', 'Educational safety review opened', 'Patient details shown for a practice review. Dosing is outside the prototype scope.');
+        }, action, 'info', 'Educational safety review opened', result.dose ? doseSummary(result.dose) : result.reason, result.dose);
       }
     case 'CHECK':
-      if (!['identity', 'weight', 'simulation'].includes(action.value) || !state.patient || !state.reviewAttempted || state.reviewRecorded || state.staleReview || state.reviewedRevision !== state.patient.revision) return state;
+      if (!['identity', 'weight', 'simulation'].includes(action.value) || !state.patient || !state.reviewDose || !state.reviewAttempted || state.reviewRecorded || state.staleReview || state.reviewedRevision !== state.patient.revision) return state;
       return {
         ...state,
         checks: state.checks.includes(action.value) ? state.checks.filter(item => item !== action.value) : [...state.checks, action.value]
       };
     case 'OPEN_RECORD':
-      return state.patient && state.reviewedRevision === state.patient.revision && !state.staleReview && !state.reviewRecorded && state.reviewAttempted && state.checks.length === 3 ? {
+      return state.patient && state.reviewDose && state.reviewedRevision === state.patient.revision && !state.staleReview && !state.reviewRecorded && state.reviewAttempted && state.checks.length === 3 ? {
         ...state,
         dialog: 'record'
       } : state;
@@ -391,13 +406,13 @@ export function reducer(state: AppState, action: Action): AppState {
       };
     case 'RECORD':
       {
-        if (!state.patient || state.staleReview || state.reviewRecorded || !state.reviewAttempted || state.checks.length !== 3 || state.reviewedRevision !== state.patient.revision) return state;
+        if (!state.patient || !state.reviewDose || state.staleReview || state.reviewRecorded || !state.reviewAttempted || state.checks.length !== 3 || state.reviewedRevision !== state.patient.revision) return state;
         return log({
           ...state,
           dialog: null,
           recordNote: '',
           reviewRecorded: true
-        }, action, 'info', 'Simulated medication review recorded', `${MEDICATIONS.find(m => m.id === state.selectedMedication)?.name}. Prototype limits acknowledged. No medication administered.${state.recordNote.trim() ? ` Note: ${state.recordNote.trim()}` : ''}`);
+        }, action, 'info', 'Simulated medication review recorded', `${doseSummary(state.reviewDose)}${state.recordNote.trim() ? ` Note: ${state.recordNote.trim()}` : ''}`, state.reviewDose);
       }
     case 'REFERENCE':
       return {
@@ -444,7 +459,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return log({
         ...state,
         offline: action.value
-      }, action, action.value ? 'warning' : 'info', action.value ? 'Connection exercise: offline' : 'Simulated connection restored', action.value ? 'Saved summaries and timer remain available. External sources require a connection.' : 'Source links are available again. Dosing remains outside the prototype scope.');
+      }, action, action.value ? 'warning' : 'info', action.value ? 'Connection exercise: offline' : 'Simulated connection restored', action.value ? 'Saved summaries, dose examples, and timer remain available. External sources require a connection.' : 'Source links are available again. Dose examples remain educational.');
     case 'END_REQUEST':
       return state.patient ? {
         ...state,
@@ -466,6 +481,7 @@ export function reducer(state: AppState, action: Action): AppState {
           },
           checks: [],
           reviewedRevision: null,
+          reviewDose: null,
           staleReview: false,
           reviewAttempted: false,
           reviewRecorded: false
@@ -526,13 +542,16 @@ export function scenarioState(scenario: Scenario, now = Date.now()): AppState {
     }, {
       type: 'SUBMIT_PATIENT'
     }]);
-    if (scenario === 'missing') apply([{
-      type: 'NAVIGATE',
-      screen: 'medications'
-    }, {
-      type: 'SELECT_MEDICATION',
-      id: 'salbutamol'
-    }]);
+    if (scenario === 'missing') {
+      state = { ...state, missingReference: 'salbutamol' };
+      apply([{
+        type: 'NAVIGATE',
+        screen: 'medications'
+      }, {
+        type: 'SELECT_MEDICATION',
+        id: 'salbutamol'
+      }]);
+    }
     if (scenario === 'offline') apply([{
       type: 'NAVIGATE',
       screen: 'medications'

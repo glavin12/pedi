@@ -24,7 +24,7 @@ Use fictional data. Give each task without describing the navigation. Ask the pa
 | Task | Successful observable outcome |
 | --- | --- |
 | Add DEMO-001, age 4 years. Enter 0 kg, then correct it to 18 kg. | They recognize the error, preserve their other entries, and confirm the corrected patient. |
-| Find Epinephrine and record an educational review. | They find the medicine, recognize the unverified reference, complete the checklist, and find the recorded activity. No dose is calculated. |
+| Find Epinephrine and record an educational review. | They find the medicine, explain the simulation dose and its formula, complete the checklist, and find the same dose snapshot in Activity. They recognise that the example is not clinically validated. |
 | Change the weight from 18 kg to 20 kg after reviewing. | They recognize the outdated-review warning and can begin another review. |
 | Start, pause, and reset the demonstration timer. | They understand the timer state and the reset confirmation. |
 | Begin editing the patient, close the form accidentally, and recover the entries. Then cancel an accidental End session action. | They recover the draft and keep the confirmed session active. |

@@ -49,7 +49,7 @@ describe('a clear medication review journey', () => {
     const html = renderToStaticMarkup(<Medications state={state} dispatch={dispatch} />);
     expect(html).toContain(MEDICINE_OVERVIEWS[medicine.id].summary);
     expect(html).toContain(MEDICINE_OVERVIEWS[medicine.id].url);
-    expect(html).toContain('Dosing is not included');
+    expect(html).toContain('Add a patient with age and weight');
     if (medicine.route !== 'Inhaled') expect(html).not.toContain('<option>Inhaled</option>');
   });
   it('rejects an unrelated route and supports returning to the combined example route', () => {

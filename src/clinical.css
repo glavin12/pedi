@@ -162,6 +162,29 @@
 .prototype-scope>svg { flex-shrink: 0; margin-top: 2px; }
 .prototype-scope strong { font-size: 13px; font-weight: 600; }
 .prototype-scope p { font-size: 12px; line-height: 1.7; margin-top: 5px; color: var(--muted); }
+.dose-card { margin: 14px 0; padding: 16px; border: 1px solid #c9dce5; border-radius: 7px; background: #f0f6f9; min-width: 0; }
+.dose-heading,.dose-result { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.dose-heading .eyebrow { font-size: 10px; }
+.tablet-app .dose-card h3 { font-size: 16px; font-weight: 600; color: var(--primary); margin-top: 12px; }
+.dose-result { margin: 12px 0 8px; color: var(--primary); }
+.dose-result>strong { font-size: 30px; font-weight: 650; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.dose-result small { font-size: 18px; }
+.dose-result>span { font-size: 13px; font-weight: 600; }
+.dose-card p { font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.dose-indication { font-weight: 600; }
+.dose-patient { margin-top: 7px; color: var(--muted); }
+.dose-formula { margin: 12px 0 4px; padding: 11px; background: white; border: 1px solid var(--border); border-radius: 5px; }
+.dose-formula strong { display: block; margin-top: 5px; color: var(--primary); font-size: 12px; }
+.dose-source summary,.activity-dose-details>summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--primary); }
+.dose-source p { margin-bottom: 8px; }
+.dose-source a { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; text-decoration: underline; }
+.dose-disclaimer { color: var(--muted); border-top: 1px solid #c9dce5; padding-top: 10px; }
+.activity-dose-details { margin-top: 8px; }
+.resuscitation-dose-examples { margin: 16px 0; }
+.resuscitation-dose-examples h3 { font-size: 13px; margin-bottom: 9px; }
+.resuscitation-dose-examples>button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; padding: 12px; margin-top: 6px; border: 1px solid var(--border); border-radius: 5px; background: #f0f6f9; color: var(--primary); cursor: pointer; }
+.resuscitation-dose-examples strong,.resuscitation-dose-examples small { display: block; }
+.resuscitation-dose-examples small { font-size: 11px; color: var(--muted); margin-top: 5px; }
 .calculation-details { border-bottom: 1px solid var(--border); margin: 0 0 17px; }
 .calculation-details>p { font-size: 12px; line-height: 1.7; color: var(--muted); padding-bottom: 14px; }
 .study-overview { margin-top: 14px; padding: 14px; background: var(--porcelain); border: 1px solid var(--border); border-radius: 6px; }

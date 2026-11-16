@@ -37,7 +37,19 @@ References: [Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite), 
 
 ## Present the prototype
 
-Choose **Start guided demo** for the ten-step walkthrough. The walkthrough is about 50 seconds at 1×. The controls support pause/resume, previous/next, restart, exit, and 1.5× speed. Clicking inside the tablet pauses playback. The six scenario shortcuts prepare genuine application states for inspection and recovery. Reset workspace returns to standby.
+Choose **Start guided demo** for the ten-step walkthrough. The walkthrough is about 60 seconds at 1×. It browses all five medicine examples, shows the same calculated dose in both review dialogs, records it in Activity, and demonstrates recalculation after a weight edit. The controls support pause/resume, previous/next, restart, exit, and 1.5× speed. Clicking inside the tablet pauses playback. The six scenario shortcuts prepare genuine application states for inspection and recovery. Reset workspace returns to standby.
+
+### Give the demo yourself (about 3 minutes)
+
+1. Choose **Reset workspace**, then **Start emergency session**. Use fictional ID **DEMO-001**, age **4 years**, and measured weight **18 kg**. To show error recovery, first submit **0 kg**, then correct it to **18 kg** and confirm.
+2. Open **Medicines → Epinephrine**. Point out **0.18 mg**, the **18 kg × 0.01 mg/kg** calculation, the cardiac-arrest indication, route, and limit. Expand **Age logic, source & scope**. Explain that age checks eligibility; it is not an extra multiplier for this formula.
+3. Select **Review safety**. The dialog repeats the same dose and patient context. Choose **Continue to checklist**, acknowledge all three checks, then **Record review**. The confirmation shows the dose again. Add an optional observation and select **Record review** to save it.
+4. Open **Activity** and expand **View saved dose details** on the recorded review. Show the patient, dose, route, formula, limits, source, and revision. The entry is a simulation review, not medication administration.
+5. Choose **Edit patient**, change weight to **20 kg**, and save. Return to **Medicines**: the example is now **0.2 mg**, old checks have cleared, and a warning asks for a fresh review. In **Activity**, the earlier recording still shows **18 kg / 0.18 mg**. You can repeat the review to save the new value too.
+6. Clear the medicine search to browse the other medicines. For an age-dependent example, choose **Salbutamol**: age **4 years** shows **2.5 mg** in the nebulised example; change the age to **6 years** to show **5 mg** and cleared checks. This example covers ages 1–15 only.
+7. Open **Resuscitation**. Switch categories, inspect the related medicine examples, and start/pause/reset the timer. Return to **Activity** to show these events. Finish with **End session → Confirm end session**; the completed record remains available for export.
+
+For hands-free playback, use **Start guided demo**. Pause while explaining; use numbered steps or Previous/Next to revisit a stage. Clicking inside the tablet pauses playback. **Resume** returns to the scripted state at that playhead; exit the demo to keep exploring manually. Refreshing clears the in-memory session, so export before refreshing if you need the record.
 
 Fullscreen tablet hides the presentation panel. Use the exit icon in the tablet header or Escape to return. All four sections remain usable manually.
 
@@ -62,7 +74,7 @@ The production web build is in `dist/`. After building, the standalone command g
 - Medicines and all four resuscitation categories include sourced study summaries. Source details and scope explanations expand on demand; the timer remains visible when switching tasks.
 - Patient setup and editing with missing, zero, negative, nonnumeric, and incorrect-unit validation. Invalid data stays in the form for correction.
 - Explicit measured/estimated weight sources. The Length-based option uses the original PAWPER XL-MAC 2017 Table 2 lookup with body length and mid-arm circumference (MAC), a live estimated weight, and retained source measurements.
-- Medication name search, category filtering, empty results, route selection, safety review, verification checks, and educational activity recording.
+- Medication name search, category filtering, empty results, route selection, reference-based dose examples for all five medicines, safety review, verification checks, and educational activity recording with saved dose snapshots.
 - Missing-reference and simulated-offline recovery. No reference becomes clinically verified through acknowledgement.
 - A real start/pause/resume timer, with confirmed reset and activity events.
 - Patient-context revisions invalidate dependent reviews and clear their checks.
@@ -74,13 +86,13 @@ The production web build is in `dist/`. After building, the standalone command g
 
 React, TypeScript, Vite, Tailwind CSS, Lucide, and Radix-backed shadcn-style local UI components. Restrained CSS transitions respect reduced-motion preferences. Noto Sans is embedded locally under the included font license. Motion and external font downloads were omitted because the build environment had no network access; the complete interaction behavior works offline.
 
-`src/lib/model.ts` contains the shared application reducer and validation. Both manual controls and the demo invoke these actions. `src/lib/demo.ts` reconstructs the app from a virtual playhead, so seeking and restarting cannot inherit stale timers, checks, or patient data. Demo pause freezes virtual time. Manual timers use elapsed wall-clock deltas and clean up their interval when stopped.
+`src/lib/doses.ts` contains the shared dose arithmetic. `src/lib/model.ts` contains the shared application reducer and validation. Both manual controls and the demo invoke these actions. `src/lib/demo.ts` reconstructs the app from a virtual playhead, so seeking and restarting cannot inherit stale timers, checks, or patient data. Demo pause freezes virtual time. Manual timers use elapsed wall-clock deltas and clean up their interval when stopped.
 
 Tablet dialogs deliberately remain modeless relative to the outer demonstration controls, so the professor can pause, seek, or reset while inspecting a dialog. Inside the tablet, an overlay blocks accidental interaction with the workspace. Dialogs have accessible names, descriptions, Escape handling, and close controls.
 
 ## Clinical boundaries
 
-There are no drug doses, clinical concentrations, administration volumes, treatment algorithms, or medical timing recommendations. The PAWPER XL-MAC weight estimate is an educational implementation of published numerical reference data; this software has not been clinically validated. Medication names and routes are navigation examples only. An educational review never represents medication administration, clinical approval, or reference verification.
+The medicine workspace includes scoped, reference-based **single-dose arithmetic examples** for fictional patients. It does not choose treatment, assess contraindications, or supply clinical concentrations, administration volumes, preparation instructions, repeat-dose schedules, treatment algorithms, or medical timing recommendations. The PAWPER XL-MAC weight estimate is an educational implementation of published numerical reference data; this software has not been clinically validated. Every example shows its specific indication, route, age and weight context, formula, minimum/maximum where applicable, source, and reference version. Cardiac examples use weight and an age eligibility check; salbutamol uses an age band rather than an invented weight multiplier. All five examples work in the normal workspace; only the explicit Missing reference scenario disables salbutamol. An educational review never represents medication administration, clinical approval, or reference verification.
 
 ### PAWPER XL-MAC
 
@@ -100,6 +112,6 @@ See **[USABILITY.md](USABILITY.md)** for the design rationale, five concrete obs
 
 Automated checks cover validation/recovery, unit rejection, estimated weight, reference search, review invalidation, guarded activity recording, timer controls, confirmation cancellation, session completion, all six scenarios, deterministic backward seeking, repeated demos, frozen-playhead timing, and server rendering of the actual screen components. PAWPER-specific tests compare all 34 length bands and seven habitus categories against an independently extracted fixture from the original Table 2, including category boundaries, the published worked example, invalid measurements, pediatric age limits, estimate provenance, and review invalidation after measurement edits. Passing these tests checks software behavior, not clinical validity.
 
-The current production build and 132 automated tests passed, including the usability-state checks and the PAWPER reference tests. The latest study content, expandable HCI notes, and Help refinements still need live visual and keyboard checks: the preview was unreachable, and this environment cannot start a listening development server.
+The production build and automated checks cover dose arithmetic, age and route constraints, dose limits, all five recording journeys, retained estimation provenance, saved history after patient edits and session completion, missing-reference recovery, offline arithmetic, and deterministic demo replay. Passing these checks establishes software behavior, not clinical validation. See the task report for the current test count and live-preview status.
 
 An earlier live desktop check at localhost:5173 covered fullscreen navigation, invalid-weight rejection and recovery, patient confirmation, medication safety review, checklist completion, recorded-review feedback, review invalidation after a weight edit, and recovery of an accidentally closed patient draft. Mobile touch behavior, the remaining live scenarios, and observation with representative medical users still need verification. No claim of clinical usability validation or audited accessibility conformance is made.

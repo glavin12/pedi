@@ -28,7 +28,7 @@ const NORMAN = [
   ['Mapping', 'Patient setup → medicine selection → safety checks → recorded activity follows the task.'],
   ['Feedback', 'A confirmed patient, remaining-check count, timer state, and recorded entry reveal outcomes.'],
   ['Constraints', 'Input validation and recording guards prevent proceeding with incomplete or outdated checks.'],
-  ['Conceptual model', 'One patient session connects the four workspaces; an educational review never enables dosing.'],
+  ['Conceptual model', 'One patient session connects the four workspaces; the same dose example follows the safety review into Activity.'],
 ];
 
 export function HciNotes({ screen, principle }: { screen: Screen; principle: string }) {

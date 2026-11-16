@@ -164,12 +164,13 @@ describe('reference safety and activity integrity', () => {
     expect(state.dialog).toBe('patient');
     expect(state.reviewAttempted).toBe(false);
   });
-  it('explains study mode without producing any numeric dosing values', () => {
+  it('captures a scoped simulation dose when the review opens', () => {
     const state = reducer(patientState(), {
       type: 'OPEN_REVIEW'
     });
-    expect(state.events.at(-1)?.detail).toContain('Dosing is outside the prototype scope');
-    expect(state).not.toHaveProperty('dose');
+    expect(state.events.at(-1)?.detail).toContain('Simulation only');
+    expect(state.reviewDose).toMatchObject({ amountMg: 0.18, simulationOnly: true });
+    expect(state.events.at(-1)?.dose).toEqual(state.reviewDose);
     expect(state).not.toHaveProperty('volume');
   });
   it('cancelling session termination preserves patient and timer', () => {
